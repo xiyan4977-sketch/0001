@@ -30,4 +30,4 @@ jobs:
         env:
           # 如果你有 API Key 或帳密，放在這裡（詳見第四步）
           STOCK_PASSWORD: ${{ secrets.STOCK_PASSWORD }}
-        run: python main.py
+        run: python 001.py

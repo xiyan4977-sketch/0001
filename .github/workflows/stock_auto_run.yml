@@ -2,11 +2,9 @@ name: 飆股狙擊雷達
 
 on:
   schedule:
-    # GitHub Action 使用 UTC 時間。
-    # 台灣時間早上 08:50 = UTC 時間 00:50
-    # 這樣設定會在每週一到週五的台股開盤前 10 分鐘自動啟動程式
+    # 台灣時間早上 08:50 (UTC 時間 00:50) 自動啟動
     - cron: '50 0 * * 1-5' 
-  workflow_dispatch: # 保留這個按鈕，讓你可以隨時手動點擊啟動測試
+  workflow_dispatch: # 保留手動啟動按鈕
 
 jobs:
   run-sniper:
@@ -24,12 +22,12 @@ jobs:
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
-        # 記得安裝 BeautifulSoup 和 requests
         pip install requests beautifulsoup4
 
     - name: Run Sniper Bot
-      run: python 001.py # 這裡的 main.py 請換成你 Python 檔案的名稱
-      
-      # 設定時區為台北時間，確保 Python 程式抓到的 now() 是台灣時間
+      run: python 001.py # 執行你的 001.py
+
+      # 強制設定時區為台北時間
       env:
         TZ: Asia/Taipei
+

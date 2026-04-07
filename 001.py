@@ -36,29 +36,35 @@ class LimitUpSniper:
             res = self.session.get(url, timeout=10)
             soup = BeautifulSoup(res.text, 'html.parser')
 
-            links = soup.find_all('a', href=re.compile(r'/quote/\d{4,5}$'))
+            # 🚀 強化版：放寬網址比對條件，只要有 /quote/數字 就抓！
+            links = soup.find_all('a', href=re.compile(r'/quote/\d+'))
 
             hot_stocks = []
             for link in links:
-                stock_id = link['href'].split('/')[-1]
-                stock_name = link.text.strip()
-                if stock_id not in [s['stock_id'] for s in hot_stocks]:
-                    hot_stocks.append({'stock_id': stock_id, 'name': stock_name})
-                    # 只要滿 50 檔就不抓了，沒滿也沒關係
-                    if len(hot_stocks) >= 50:
-                        break
+                # 🚀 強化版：精準從網址中把「純數字」的股票代號萃取出來
+                match = re.search(r'/quote/(\d+)', link.get('href', ''))
+                if match:
+                    stock_id = match.group(1)
+                    stock_name = link.text.strip()
+                    
+                    # 避免抓到空字串，且確保不重複
+                    if stock_name and stock_id not in [s['stock_id'] for s in hot_stocks]:
+                        hot_stocks.append({'stock_id': stock_id, 'name': stock_name})
+                        if len(hot_stocks) >= 50:
+                            break
 
             self.watchlist = hot_stocks
-            
+
             # 如果有抓到東西，才印出訊息
             if len(self.watchlist) > 0:
                 stock_names_str = ", ".join([s['name'] for s in hot_stocks[:8]]) + "..."
                 self.notifier.send_alert(f"🤖 *爬蟲完畢*：已鎖定今日 {len(self.watchlist)} 檔熱門飆股。\n目標包含：{stock_names_str}")
                 print(f"✅ 成功抓取 {len(self.watchlist)} 檔股票。")
-                
+            else:
+                print("⚠️ 網頁抓取成功，但沒有找到符合條件的股票代號。")
+
         except Exception as e:
             print(f"❌ 爬蟲失敗: {e}")
-            # 只有在真的發生錯誤時才通知，單純沒資料不通知
 
     def get_realtime_price(self, stock_id):
         """取得即時報價，並自動判斷/記憶上市(tse)或上櫃(otc)"""
@@ -137,15 +143,15 @@ class LimitUpSniper:
         # 【死纏爛打抓取機制】：名單是 0 檔的時候，就一直等、一直重試
         while len(self.watchlist) == 0:
             now = datetime.datetime.now()
-            
+
             # 萬一遇到國定假日整天都沒開盤，時間到了還是要強制下班
             if (now.hour == 13 and now.minute >= 35) or now.hour >= 14:
                 print("🏁 今日無股市資料且已達下班時間，程式自動關閉！")
                 self.notifier.send_alert("🏁 *今日疑似休市，雷達自動關機，明天見！*")
                 return # 直接結束程式
-            
+
             self.fetch_hot_stocks()
-            
+
             if len(self.watchlist) > 0:
                 break # 只要抓到大於 0 檔，就打破迴圈開始監控！
             else:

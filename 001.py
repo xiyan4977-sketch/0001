@@ -36,32 +36,42 @@ class LimitUpSniper:
             res = self.session.get(url, timeout=10)
             soup = BeautifulSoup(res.text, 'html.parser')
 
-            # 🚀 強化版：放寬網址比對條件，只要有 /quote/數字 就抓！
             links = soup.find_all('a', href=re.compile(r'/quote/\d+'))
 
             hot_stocks = []
             for link in links:
-                # 🚀 強化版：精準從網址中把「純數字」的股票代號萃取出來
                 match = re.search(r'/quote/(\d+)', link.get('href', ''))
                 if match:
                     stock_id = match.group(1)
-                    stock_name = link.text.strip()
                     
-                    # 避免抓到空字串，且確保不重複
-                    if stock_name and stock_id not in [s['stock_id'] for s in hot_stocks]:
+                    # 嘗試往下尋找真正包含股票名稱的 div (過濾掉網頁上的其他無關連結)
+                    name_element = link.find('div', class_=re.compile(r'Fw\(600\)'))
+                    if name_element:
+                        stock_name = name_element.text.strip()
+                    else:
+                        stock_name = link.text.strip()
+
+                    # 🛡️ 終極過濾器：排除空字串、排除按鈕名稱、限制長度
+                    invalid_keywords = ['估價', '走勢', '技術', '籌碼', '新聞', '分析']
+                    is_valid_name = True
+                    for kw in invalid_keywords:
+                        if kw in stock_name:
+                            is_valid_name = False
+                            break
+                    
+                    if is_valid_name and 1 < len(stock_name) <= 6 and stock_id not in [s['stock_id'] for s in hot_stocks]:
                         hot_stocks.append({'stock_id': stock_id, 'name': stock_name})
                         if len(hot_stocks) >= 50:
                             break
 
             self.watchlist = hot_stocks
 
-            # 如果有抓到東西，才印出訊息
             if len(self.watchlist) > 0:
                 stock_names_str = ", ".join([s['name'] for s in hot_stocks[:8]]) + "..."
                 self.notifier.send_alert(f"🤖 *爬蟲完畢*：已鎖定今日 {len(self.watchlist)} 檔熱門飆股。\n目標包含：{stock_names_str}")
                 print(f"✅ 成功抓取 {len(self.watchlist)} 檔股票。")
             else:
-                print("⚠️ 網頁抓取成功，但沒有找到符合條件的股票代號。")
+                print("⚠️ 網頁抓取成功，但沒有找到符合條件的股票，等待重試。")
 
         except Exception as e:
             print(f"❌ 爬蟲失敗: {e}")
@@ -177,7 +187,7 @@ class LimitUpSniper:
             time.sleep(interval_seconds)
 
 if __name__ == "__main__":
-    TOKEN = "8180918942:AAFXkzX-95J3zQR0l0RcOXVfUO9cyHJaswk" 
+    TOKEN = "8180918942:AAFXkzX-95J3zQR0l0RcOXVfUO9cyHJaswk"
     CHAT_ID = "7836204601" 
 
     tg_bot = TelegramNotifier(bot_token=TOKEN, chat_id=CHAT_ID)

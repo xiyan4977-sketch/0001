@@ -2,8 +2,8 @@ name: 飆股狙擊雷達
 
 on:
   schedule:
-    # 台灣時間早上 08:50 (UTC 時間 00:50) 自動啟動
-    - cron: '50 0 * * 1-5' 
+    # 提早到台灣時間早上 08:30 (UTC 時間 00:30) 啟動，預留給 GitHub 塞車延遲的時間
+    - cron: '30 0 * * 1-5'
   workflow_dispatch: # 保留手動啟動按鈕
 
 jobs:
